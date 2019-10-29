@@ -1,0 +1,15 @@
+# VS Code
+.vscode/
+
+# OS X
+.DS_Store
+
+# Build
+bin/
+build/
+build_*/
+tests/*.o
+tests/*.bin
+
+# Other
+*.swp
