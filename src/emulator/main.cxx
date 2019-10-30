@@ -22,87 +22,12 @@
 #include <iostream>
 #include <fstream>
 
+#include "io.hxx"
 #include "ram.hxx"
 #include "cpu.hxx"
 #include "elf.hxx"
 
 using namespace SoloMIPS;
-
-#define READ_CHUNK_SIZE 0x010000u
-#define MAX_ROM_SIZE 0x1000000u
-
-static std::vector<uint8_t> loadBinary(const char *filename)
-{
-    std::ifstream bin;
-    bin.open(filename, std::ios::in | std::ios::binary);
-    if (!bin.is_open()) {
-        std::cerr << "error: could not open input file" << std::endl;
-        return {};
-    }
-    std::vector<uint8_t> data;
-    size_t offset = 0;
-    while (!bin.eof()) {
-        data.resize(offset + READ_CHUNK_SIZE);
-        bin.read(reinterpret_cast<char *>(data.data()) + offset, READ_CHUNK_SIZE);
-        if (bin.fail() && !bin.eof()) {
-            std::cerr << "error: could not load input file" << std::endl;
-            bin.close();
-            return {};
-        }
-        offset += bin.gcount();
-        if (offset >= MAX_ROM_SIZE) {
-            std::cerr << "error: file larger than maximum size" << std::endl;
-            bin.close();
-            return {};
-        }
-    }
-    data.resize(offset);
-    if (data.empty()) {
-        std::cerr << "error: could not load input file or empty input file" << std::endl;
-        return {};
-    }
-    bin.close();
-
-    // Test if we got an ELF32 object file
-    ELF32Object obj;
-    if (obj.parse(data)) {
-        if (obj.type == ELFObjectType::Rel && obj.machine == ELFMachineType::MIPS) {
-            size_t ti = obj.indexOfSection(".text");
-            size_t si = obj.indexOfSection(".symtab");
-            if (ti != SIZE_T_MAX && si != SIZE_T_MAX) {
-                for (ELFSymbolTableEntry &entry : obj.sections[si].symbolTable) {
-                    if (entry.name == "main" && entry.shndx == ti) {
-                        if (entry.type() == ELFSymbolType::Object) {
-                            if (entry.value == 0) {
-                                uint8_t *raw = data.data();
-                                std::memmove(raw, raw + obj.sections[ti].offset, obj.sections[ti].size);
-                                data.resize(obj.sections[ti].size);
-                                return data;
-                            }
-                            else {
-                                std::cerr << "error: \"main\" symbol in ELF object file must point to the first instruction" << std::endl;
-                                return {};
-                            }
-                        }
-                        else {
-                            std::cerr << "error: \"main\" symbol in ELF object file must be an object (functions not supported yet)" << std::endl;
-                            return {};
-                        }
-                    }
-                }
-                std::cerr << "error: no \"main\" symbol found in ELF object file" << std::endl;
-                return {};
-            }
-            std::cerr << "error: ELF object file is required to contain both .text and .symtab sections" << std::endl;
-        }
-        else {
-            std::cerr << "error: invalid ELF object file type or invalid machine type" << std::endl;
-        }
-        return {};
-    }
-
-    return data;
-}
 
 int main(int argc, char **argv)
 {
@@ -111,11 +36,17 @@ int main(int argc, char **argv)
         return -20;
     }
 
-    // Load program into ROM
-    ArrayRAMMapper rom(0x10000000u, loadBinary(argv[1]), RAMMapperFlag::Readable | RAMMapperFlag::Executable);
+    // Prepare ROM
+    ArrayRAMMapper rom(0x10000000u, RAMMapperFlag::Readable | RAMMapperFlag::Executable);
 
-    if (rom.size() == 0)
+    // Load program
+    try {
+        rom.setData(loadBinaryFile(argv[1]));
+    }
+    catch (IOException &e) {
+        std::cerr << "error: " << e.what() << std::endl;
         return -21;
+    }
 
     // Allocate work RAM
     ArrayRAMMapper wram(0x20000000u, 0x4000000u);

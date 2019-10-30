@@ -19,15 +19,13 @@
  *  along with SoloMIPS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HEADER_SOLOMIPS_OP_H
-#define HEADER_SOLOMIPS_OP_H
+#ifndef HEADER_SOLOMIPS_OP_HXX
+#define HEADER_SOLOMIPS_OP_HXX
 
 #include <cstdint>
 #include <exception>
 
 namespace SoloMIPS {
-
-struct RAMPointer;
 
 /*
 Decoder and container for R2000 instructions. Will throw an execption if the
@@ -120,7 +118,6 @@ struct OP
     explicit OP(uint32_t word);
 
     void decode(uint32_t word);
-    OP &operator=(const RAMPointer &p);
     uint32_t encode() const;
 
     Opcode opcode;
@@ -142,4 +139,4 @@ struct OP
 
 }
 
-#endif /* HEADER_SOLOMIPS_OP_H */
+#endif /* HEADER_SOLOMIPS_OP_HXX */

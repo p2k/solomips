@@ -47,12 +47,27 @@ void ELF32Section::parseHeader(const ELF32Object *obj, const std::vector<uint8_t
 
 void ELF32Section::readSymbolTable(const ELF32Object *obj, const std::vector<uint8_t> &data)
 {
-    if (this->type != ELFSectionType::SymTab || this->offset == 0 || this->entsize < 16)
+    if (this->type != ELFSectionType::SymTab
+            || this->offset == 0
+            || this->entsize < 16)
         return;
 
     this->symbolTable.clear();
     for (size_t s = 0, offset = this->offset; s < this->size; s += this->entsize, offset += this->entsize) {
         this->symbolTable.push_back(ELFSymbolTableEntry(obj, data, offset, this->link));
+    }
+}
+
+void ELF32Section::readRelTable(const ELF32Object *obj, const std::vector<uint8_t> &data)
+{
+    if ((this->type != ELFSectionType::Rel && this->type != ELFSectionType::RelA)
+            || this->offset == 0
+            || this->entsize < (this->type == ELFSectionType::Rel ? 8 : 12))
+        return;
+
+    this->relTable.clear();
+    for (size_t s = 0, offset = this->offset; s < this->size; s += this->entsize, offset += this->entsize) {
+        this->relTable.push_back(ELFRelTableEntry(obj, data, offset, this->type == ELFSectionType::RelA));
     }
 }
 
@@ -70,29 +85,53 @@ ELFSymbolTableEntry::ELFSymbolTableEntry(const ELF32Object *obj, const std::vect
     this->shndx = obj->readHalf(data, offset+14);
 }
 
-bool ELFSymbolTableEntry::isLocal()
+bool ELFSymbolTableEntry::isLocal() const
 {
     return ((this->info >> 4) == 0);
 }
 
-bool ELFSymbolTableEntry::isGlobal()
+bool ELFSymbolTableEntry::isGlobal() const
 {
     return ((this->info >> 4) == 1);
 }
 
-bool ELFSymbolTableEntry::isWeak()
+bool ELFSymbolTableEntry::isWeak() const
 {
     return ((this->info >> 4) == 2);
 }
 
-bool ELFSymbolTableEntry::isVisible()
+bool ELFSymbolTableEntry::isVisible() const
 {
     return ((this->other & 0x3) == 0);
 }
 
-ELFSymbolType ELFSymbolTableEntry::type()
+ELFSymbolType ELFSymbolTableEntry::type() const
 {
     return static_cast<ELFSymbolType>(this->info & 0x0f);
+}
+
+
+ELFRelTableEntry::ELFRelTableEntry()
+    : offset(0), info(0), addend(0) {}
+
+ELFRelTableEntry::ELFRelTableEntry(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t offset, bool hasAddend)
+{
+    this->offset = obj->readWord(data, offset);
+    this->info = obj->readWord(data, offset+4);
+    if (hasAddend)
+        this->addend = obj->readWord(data, offset+8);
+    else
+        this->addend = 0;
+}
+
+uint32_t ELFRelTableEntry::sym() const
+{
+    return this->info >> 8;
+}
+
+ELFRelType ELFRelTableEntry::type() const
+{
+    return static_cast<ELFRelType>(this->info & 0x0f);
 }
 
 
@@ -140,6 +179,8 @@ bool ELF32Object::parse(const std::vector<uint8_t> &data)
         section.name = this->readStringTable(data, section.nameIndex);
         if (section.type == ELFSectionType::SymTab)
             section.readSymbolTable(this, data);
+        else if (section.type == ELFSectionType::Rel || section.type == ELFSectionType::RelA)
+            section.readRelTable(this, data);
     }
 
     return true;

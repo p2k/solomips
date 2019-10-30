@@ -95,6 +95,9 @@ RAMMapperFlag SoloMIPS::operator~(RAMMapperFlag f)
 }
 
 
+ArrayRAMMapper::ArrayRAMMapper(uint32_t offset, RAMMapperFlag flags)
+    : _offset(offset), _flags(flags) {}
+
 ArrayRAMMapper::ArrayRAMMapper(uint32_t offset, const std::vector<uint8_t> &data, RAMMapperFlag flags)
     : _offset(offset), _data(data), _flags(flags) {}
 
@@ -245,6 +248,16 @@ void ArrayRAMMapper::setOffset(uint32_t offset)
 uint8_t *ArrayRAMMapper::data()
 {
     return this->_data.data();
+}
+
+void ArrayRAMMapper::setData(const std::vector<uint8_t> &data)
+{
+    this->_data = data;
+}
+
+void ArrayRAMMapper::setData(std::vector<uint8_t> &&data)
+{
+    this->_data = std::move(data);
 }
 
 uint32_t ArrayRAMMapper::size() const

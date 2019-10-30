@@ -19,8 +19,8 @@
  *  along with SoloMIPS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HEADER_SOLOMIPS_RAM_H
-#define HEADER_SOLOMIPS_RAM_H
+#ifndef HEADER_SOLOMIPS_RAM_HXX
+#define HEADER_SOLOMIPS_RAM_HXX
 
 #include <cstdint>
 #include <iostream>
@@ -87,8 +87,9 @@ RAMMapperFlag operator~(RAMMapperFlag f);
 class ArrayRAMMapper : public RAMMapper
 {
 public:
-    ArrayRAMMapper(uint32_t offset, const std::vector<uint8_t> &data, RAMMapperFlag flags = RAMMapperFlag::Readable | RAMMapperFlag::Writable);
-    ArrayRAMMapper(uint32_t offset, std::vector<uint8_t> &&data, RAMMapperFlag flags = RAMMapperFlag::Readable | RAMMapperFlag::Writable);
+    ArrayRAMMapper(uint32_t offset, RAMMapperFlag flags = RAMMapperFlag::Readable);
+    ArrayRAMMapper(uint32_t offset, const std::vector<uint8_t> &data, RAMMapperFlag flags = RAMMapperFlag::Readable);
+    ArrayRAMMapper(uint32_t offset, std::vector<uint8_t> &&data, RAMMapperFlag flags = RAMMapperFlag::Readable);
     ArrayRAMMapper(uint32_t offset, uint32_t length, RAMMapperFlag flags = RAMMapperFlag::Readable | RAMMapperFlag::Writable);
 
     bool respondsTo(uint32_t addr) const;
@@ -116,6 +117,8 @@ public:
     void setOffset(uint32_t offset);
 
     uint8_t *data();
+    void setData(const std::vector<uint8_t> &data);
+    void setData(std::vector<uint8_t> &&data);
     uint32_t size() const;
 
 private:
@@ -218,4 +221,4 @@ private:
 
 }
 
-#endif /* HEADER_SOLOMIPS_CPU_H */
+#endif /* HEADER_SOLOMIPS_CPU_HXX */

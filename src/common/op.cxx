@@ -20,7 +20,6 @@
  */
 
 #include "op.hxx"
-#include "ram.hxx"
 
 using namespace SoloMIPS;
 
@@ -29,12 +28,6 @@ OP::OP() : opcode(Opcode::REG), rs(0), rt(0), rd(0), shamt(0), funct(Funct::SLL)
 OP::OP(uint32_t word)
 {
     this->decode(word);
-}
-
-OP &OP::operator=(const RAMPointer &p)
-{
-    this->decode(p.instr());
-    return *this;
 }
 
 void OP::decode(uint32_t word)

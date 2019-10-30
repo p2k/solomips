@@ -72,7 +72,7 @@ void R3000::step()
     }
     else {
         try {
-            nextOp = ram[pc];
+            nextOp.decode(ram[pc].instr());
         }
         catch (InvalidOPException &) {
             dex = DelayedException::InvalidOPException;

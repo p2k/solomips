@@ -24,7 +24,6 @@ cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 project(SoloMIPS CXX)
 
 set(CXX_STANDARD_REQUIRED ON)
-set(CXX_STANDARD 11)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
@@ -43,7 +42,8 @@ file(GLOB src_testbench "src/testbench/*.cxx" "src/testbench/*.hxx")
 include_directories("src/common")
 
 add_executable(solomips-emu ${src_common} ${src_emulator})
-
 add_executable(solomips-ld ${src_common} ${src_linker})
-
 add_executable(solomips-test ${src_testbench})
+
+set_target_properties(solomips-emu solomips-ld solomips-test
+    PROPERTIES CXX_STANDARD 11)

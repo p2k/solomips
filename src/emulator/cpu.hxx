@@ -19,8 +19,8 @@
  *  along with SoloMIPS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HEADER_SOLOMIPS_CPU_H
-#define HEADER_SOLOMIPS_CPU_H
+#ifndef HEADER_SOLOMIPS_CPU_HXX
+#define HEADER_SOLOMIPS_CPU_HXX
 
 #include "op.hxx"
 #include "ram.hxx"
@@ -46,12 +46,7 @@ struct MisalignedPCException : public std::exception {};
 struct ArithmeticException : public std::exception
 {
     ArithmeticException(const char *msg) : _msg(msg) {}
-
-    const char *what() const noexcept
-    {
-        return this->_msg;
-    }
-
+    const char *what() const noexcept { return this->_msg; }
     const char *_msg;
 };
 
@@ -113,4 +108,4 @@ public:
 
 }
 
-#endif /* HEADER_SOLOMIPS_CPU_H */
+#endif /* HEADER_SOLOMIPS_CPU_HXX */
