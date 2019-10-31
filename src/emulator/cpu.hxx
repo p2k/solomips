@@ -45,7 +45,7 @@ struct MisalignedPCException : public std::exception {};
 
 struct ArithmeticException : public std::exception
 {
-    ArithmeticException(const char *msg) : _msg(msg) {}
+    explicit ArithmeticException(const char *msg) : _msg(msg) {}
     const char *what() const noexcept { return this->_msg; }
     const char *_msg;
 };

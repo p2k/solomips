@@ -89,6 +89,26 @@ enum class ELFSymbolType : uint8_t
     TLS = 6
 };
 
+enum class ELFSectionFlags : uint32_t
+{
+    None            = 0,
+    Write           = 1<<0,
+    Alloc           = 1<<1,
+    ExecInstr       = 1<<2,
+    Merge           = 1<<4,
+    Strings         = 1<<5,
+    InfoLink        = 1<<6,
+    LinkOrder       = 1<<7,
+    OSNonconforming = 1<<8,
+    Group           = 1<<9,
+    TLS             = 1<<10,
+    Compressed      = 1<<11
+};
+
+ELFSectionFlags operator|(ELFSectionFlags lhs, ELFSectionFlags rhs);
+ELFSectionFlags operator&(ELFSectionFlags lhs, ELFSectionFlags rhs);
+ELFSectionFlags operator~(ELFSectionFlags f);
+
 enum class ELFRelType : uint8_t
 {
     MIPS_NONE = 0,
@@ -153,7 +173,7 @@ struct ELF32Section
     uint32_t nameIndex;
     std::string name;
     ELFSectionType type;
-    uint32_t flags;
+    ELFSectionFlags flags;
     uint32_t addr;
     uint32_t offset;
     uint32_t size;

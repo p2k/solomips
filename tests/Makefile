@@ -21,13 +21,13 @@
 
 .PHONY: all docker
 
-all: test1.S.o test2.S.o test3.c.o
+all: test1.S.o test2.S.o test3.c.o test4.S.o
 
 docker:
 	docker build -t gcc-mips .
 
 %.S.o: %.S
-	docker run --rm -v $(PWD):/src gcc-mips mips-linux-gnu-gcc -march=r3000 -mfp32 -c -o $@ $<
+	docker run --rm -v $(PWD):/src gcc-mips mips-linux-gnu-gcc -march=r3000 -mfp32 -mno-plt -c -o $@ $<
 
 %.c.o: %.c
 	docker run --rm -v $(PWD):/src gcc-mips mips-linux-gnu-gcc -march=r3000 -mfp32 -O2 -c -o $@ $<

@@ -42,7 +42,7 @@ will be asked first; if no mapper responds, an exception is thrown.
 
 struct MemoryException : public std::exception
 {
-    MemoryException(const char *msg) : _msg(msg) {}
+    explicit MemoryException(const char *msg) : _msg(msg) {}
     const char *what() const noexcept { return this->_msg; }
     const char *_msg;
 };

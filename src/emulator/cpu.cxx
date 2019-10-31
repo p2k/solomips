@@ -35,8 +35,8 @@ void R3000::reset()
     this->hi = 0;
     this->lo = 0;
     // Produce NOPs
-    this->op.decode(0);
-    this->nextOp.decode(0);
+    this->op.decode(0x00000000u);
+    this->nextOp.decode(0x00000000u);
     // Set program counter
     this->pc = entrypoint;
     // Clear delayed exception
@@ -86,7 +86,7 @@ void R3000::step()
 
     // Run instruction
     switch (op.opcode) {
-        case Opcode::REG:
+        case Opcode::SPECIAL:
             switch (op.funct) {
                 case Funct::SLL:
                     r[op.rd] = r[op.rt] << op.shamt;
@@ -184,7 +184,7 @@ void R3000::step()
                     break;
             }
             break;
-        case Opcode::BGTLT:
+        case Opcode::REGIMM:
             switch (op.rt) {
                 case 0b10000: // BLTZAL
                     r[31] = pc+4;
@@ -247,9 +247,6 @@ void R3000::step()
         case Opcode::LUI:
             r[op.rt] = op.imm << 16;
             break;
-        case Opcode::MTFC0:
-            // Not supported, does nothing
-            break;
         case Opcode::LB:
         case Opcode::LH:
         case Opcode::LW:
@@ -272,23 +269,23 @@ void R3000::step()
     switch (dlOpcode) {
         case Opcode::LB:
             sr[dlTarget] = static_cast<int8_t>(ram[dlAddr]);
-            dlOpcode = Opcode::REG;
+            dlOpcode = Opcode::SPECIAL;
             break;
         case Opcode::LH:
             sr[dlTarget] = static_cast<int16_t>(ram[dlAddr]);
-            dlOpcode = Opcode::REG;
+            dlOpcode = Opcode::SPECIAL;
             break;
         case Opcode::LW:
             r[dlTarget] = ram[dlAddr];
-            dlOpcode = Opcode::REG;
+            dlOpcode = Opcode::SPECIAL;
             break;
         case Opcode::LBU:
             r[dlTarget] = static_cast<uint8_t>(ram[dlAddr]);
-            dlOpcode = Opcode::REG;
+            dlOpcode = Opcode::SPECIAL;
             break;
         case Opcode::LHU:
             r[dlTarget] = static_cast<uint16_t>(ram[dlAddr]);
-            dlOpcode = Opcode::REG;
+            dlOpcode = Opcode::SPECIAL;
             break;
         default:
             break;

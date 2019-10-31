@@ -23,6 +23,8 @@
 #define HEADER_SOLOMIPS_OP_HXX
 
 #include <cstdint>
+#include <string>
+#include <ostream>
 #include <exception>
 
 namespace SoloMIPS {
@@ -32,19 +34,21 @@ Decoder and container for R2000 instructions. Will throw an execption if the
 opcode is invalid.
 */
 
-struct InvalidOPException : public std::exception
+class InvalidOPException : public std::exception
 {
-    const char *what() const noexcept
-    {
-        return "Invalid instruction";
-    }
+public:
+    InvalidOPException();
+    explicit InvalidOPException(const std::string &msg);
+    const char *what() const noexcept;
+
+private:
+    std::string _msg;
 };
 
 enum class Opcode : unsigned int
 {
-    REG   = 0b000000,
-
-    BGTLT = 0b000001,
+    SPECIAL = 0b000000,
+    REGIMM = 0b000001,
 
     J     = 0b000010,
     JAL   = 0b000011,
@@ -62,8 +66,6 @@ enum class Opcode : unsigned int
     XORI  = 0b001110,
 
     LUI   = 0b001111,
-
-    MTFC0 = 0b010000,
 
     LB    = 0b100000,
     LH    = 0b100001,
@@ -117,8 +119,12 @@ struct OP
     OP();
     explicit OP(uint32_t word);
 
+    static void disassemble(const uint8_t *data, uint32_t size, std::ostream &out);
+
+    void decode(const uint8_t *p);
     void decode(uint32_t word);
     uint32_t encode() const;
+    void encode(uint8_t *p) const;
 
     Opcode opcode;
 
@@ -138,5 +144,7 @@ struct OP
 };
 
 }
+
+std::ostream &operator<<(std::ostream &out, const SoloMIPS::OP &op);
 
 #endif /* HEADER_SOLOMIPS_OP_HXX */

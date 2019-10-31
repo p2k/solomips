@@ -29,11 +29,27 @@
 
 using namespace SoloMIPS;
 
+static void printVersion(const char *argv0)
+{
+    std::cerr << "usage: " << argv0 << "[-d] <path>" << std::endl;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        std::cerr << "usage: " << argv[0] << "<path>" << std::endl;
+        printVersion(argv[0]);
         return -20;
+    }
+
+    bool disassemble = false;
+    const char *path = argv[1];
+    if (std::strcmp(path, "-d") == 0) {
+        disassemble = true;
+        if (argc < 3) {
+            printVersion(argv[0]);
+            return -20;
+        }
+        path = argv[2];
     }
 
     // Prepare ROM
@@ -41,11 +57,23 @@ int main(int argc, char **argv)
 
     // Load program
     try {
-        rom.setData(loadBinaryFile(argv[1]));
+        rom.setData(loadBinaryFile(path));
     }
     catch (IOException &e) {
         std::cerr << "error: " << e.what() << std::endl;
         return -21;
+    }
+
+    // Disassemble
+    if (disassemble) {
+        try {
+            OP::disassemble(rom.data(), rom.size(), std::cout);
+        }
+        catch (InvalidOPException &e) {
+            std::cerr << e.what();
+            return -12;
+        }
+        return 0;
     }
 
     // Allocate work RAM

@@ -32,7 +32,7 @@ namespace SoloMIPS {
 class IOException : public std::exception
 {
 public:
-    IOException(const std::string &msg);
+    explicit IOException(const std::string &msg);
     const char *what() const noexcept;
 
 private:

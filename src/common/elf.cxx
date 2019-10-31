@@ -23,8 +23,24 @@
 
 using namespace SoloMIPS;
 
+ELFSectionFlags operator|(ELFSectionFlags lhs, ELFSectionFlags rhs)
+{
+    return static_cast<ELFSectionFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+}
+
+ELFSectionFlags operator&(ELFSectionFlags lhs, ELFSectionFlags rhs)
+{
+    return static_cast<ELFSectionFlags>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+}
+
+ELFSectionFlags operator~(ELFSectionFlags f)
+{
+    return static_cast<ELFSectionFlags>(~static_cast<uint32_t>(f));
+}
+
+
 ELF32Section::ELF32Section()
-    : nameIndex(0), type(ELFSectionType::Null), flags(0), addr(0), offset(0), size(0), link(0), info(0), addralign(0), entsize(0) {}
+    : nameIndex(0), type(ELFSectionType::Null), flags(ELFSectionFlags::None), addr(0), offset(0), size(0), link(0), info(0), addralign(0), entsize(0) {}
 
 ELF32Section::ELF32Section(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t offset)
 {
@@ -35,7 +51,7 @@ void ELF32Section::parseHeader(const ELF32Object *obj, const std::vector<uint8_t
 {
     this->nameIndex = obj->readWord(data, offset);
     this->type = static_cast<ELFSectionType>(obj->readWord(data, offset+4));
-    this->flags = obj->readWord(data, offset+8);
+    this->flags = static_cast<ELFSectionFlags>(obj->readWord(data, offset+8));
     this->addr = obj->readWord(data, offset+12);
     this->offset = obj->readWord(data, offset+16);
     this->size = obj->readWord(data, offset+20);
@@ -176,6 +192,8 @@ bool ELF32Object::parse(const std::vector<uint8_t> &data)
         this->sections.push_back(ELF32Section(this, data, offset));
     }
     for (ELF32Section &section : this->sections) {
+        if (section.offset + section.size >= data.size())
+            return false;
         section.name = this->readStringTable(data, section.nameIndex);
         if (section.type == ELFSectionType::SymTab)
             section.readSymbolTable(this, data);
