@@ -47,7 +47,8 @@ OP::OP(uint32_t word)
 
 void OP::disassemble(const uint8_t *data, uint32_t size, std::ostream &out)
 {
-    out << std::setfill('0');
+    std::ios::fmtflags flags = out.flags();
+    out.unsetf(std::ios::binary);
     OP op;
     for (uint32_t i = 0; i+3 < size; i += 4) {
         try {
@@ -60,6 +61,47 @@ void OP::disassemble(const uint8_t *data, uint32_t size, std::ostream &out)
             throw InvalidOPException(str.str());
         }
     }
+    out.flags(flags);
+}
+
+OP OP::ADDIU(uint8_t rt, uint8_t rs, uint16_t imm)
+{
+    OP op;
+    op.opcode = Opcode::ADDIU;
+    op.rs = rs;
+    op.rt = rt;
+    op.imm = imm;
+    return op;
+}
+
+OP OP::LUI(uint8_t rt, uint16_t imm)
+{
+    OP op;
+    op.opcode = Opcode::LUI;
+    op.rt = rt;
+    op.imm = imm;
+    return op;
+}
+
+OP OP::SW(uint8_t rt, int16_t offset, uint8_t base)
+{
+    OP op;
+    op.opcode = Opcode::SW;
+    op.rt = rt;
+    op.rs = base;
+    op.simm = offset;
+    return op;
+}
+
+OP OP::OR(uint8_t rd, uint8_t rs, uint8_t rt)
+{
+    OP op;
+    op.opcode = Opcode::SPECIAL;
+    op.funct = Funct::OR;
+    op.rs = rs;
+    op.rt = rt;
+    op.rd = rd;
+    return op;
 }
 
 void OP::decode(const uint8_t *p)
@@ -127,13 +169,13 @@ uint32_t OP::encode() const
     }
     else if (this->opcode == Opcode::J || this->opcode == Opcode::JAL) { // J-Type
         return (op << 26)
-            | ((this->rs & 0x1f) << 21)
-            | ((this->rt & 0x1f) << 16)
-            | this->imm;
+            | (this->addr & 0x3ffffff);
     }
     else { // I-Type
         return (op << 26)
-            | (this->addr & 0x3ffffff);
+            | ((this->rs & 0x1f) << 21)
+            | ((this->rt & 0x1f) << 16)
+            | this->imm;
     }
 }
 
@@ -148,6 +190,16 @@ void OP::encode(uint8_t *p) const
 
 std::ostream &operator<<(std::ostream &out, const OP &op)
 {
+    if (out.flags() & std::ios::binary) {
+        uint32_t word = op.encode();
+        out
+            << static_cast<uint8_t>(word >> 24)
+            << static_cast<uint8_t>((word >> 16) & 0xff)
+            << static_cast<uint8_t>((word >> 8) & 0xff)
+            << static_cast<uint8_t>(word & 0xff);
+        return out;
+    }
+
     // Names
     switch (op.opcode) {
         case Opcode::ADDI:  out << "addi   "; break;
@@ -243,7 +295,7 @@ std::ostream &operator<<(std::ostream &out, const OP &op)
             out << " r" << static_cast<uint16_t>(op.rt) << ", " << op.simm << "(r" << static_cast<uint16_t>(op.rs) << ")";
             break;
         case Opcode::LUI:
-            out << " r" << static_cast<uint16_t>(op.rt) << ", " << op.simm;
+            out << " r" << static_cast<uint16_t>(op.rt) << ", " << op.imm;
             break;
         case Opcode::BGTZ:
         case Opcode::BLEZ:
@@ -251,9 +303,12 @@ std::ostream &operator<<(std::ostream &out, const OP &op)
             out << " r" << static_cast<uint16_t>(op.rs) << ", " << op.simm;
             break;
         case Opcode::J:
-        case Opcode::JAL:
-            out << " 0x" << std::hex << std::setw(4) << op.addr << std::setw(0) << std::dec;
+        case Opcode::JAL: {
+            std::stringstream str;
+            str << " 0x" << std::setfill('0') << std::setw(4) << std::hex << op.addr;
+            out << str.str();
             break;
+        }
         case Opcode::SLTI:
             out << " r" << static_cast<uint16_t>(op.rs) << ", r" << static_cast<uint16_t>(op.rt) << ", " << op.simm;
             break;

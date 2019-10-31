@@ -121,6 +121,11 @@ struct OP
 
     static void disassemble(const uint8_t *data, uint32_t size, std::ostream &out);
 
+    static OP ADDIU(uint8_t rt, uint8_t rs, uint16_t imm);
+    static OP LUI(uint8_t rt, uint16_t imm);
+    static OP SW(uint8_t rt, int16_t offset, uint8_t base);
+    static OP OR(uint8_t rd, uint8_t rs, uint8_t rt);
+
     void decode(const uint8_t *p);
     void decode(uint32_t word);
     uint32_t encode() const;
