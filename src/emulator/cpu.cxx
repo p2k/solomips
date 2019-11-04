@@ -187,13 +187,13 @@ void R3000::step()
         case Opcode::REGIMM:
             switch (op.rt) {
                 case 0b10000: // BLTZAL
-                    r[31] = pc+4;
+                    r[31] = pc;
                 case 0b00000: // BLTZ
                     if (r[op.rs] < 0)
                         pc += static_cast<int32_t>(op.simm) << 2;
                     break;
                 case 0b10001: // BGEZAL
-                    r[31] = pc+4;
+                    r[31] = pc;
                 case 0b00001: // BGEZ
                     if (r[op.rs] >= 0)
                         pc += static_cast<int32_t>(op.simm) << 2;
@@ -203,7 +203,7 @@ void R3000::step()
             }
             break;
         case Opcode::JAL:
-            r[31] = pc+4;
+            r[31] = pc;
         case Opcode::J:
             pc = (pc & 0xf0000000) | (op.addr << 2);
             break;
