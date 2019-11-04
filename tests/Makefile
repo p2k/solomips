@@ -27,6 +27,8 @@ endif
 
 TOOLCHAIN_GCC=../toolchain/bin/mips-linux-gnu-gcc$(BIN_SUFFIX)
 
+LD=../build/solomips-ld
+
 ifneq (,$(wildcard $(TOOLCHAIN_GCC)))
 CC=$(TOOLCHAIN_GCC)
 else
@@ -35,13 +37,13 @@ endif
 
 .PHONY: all docker
 
-all: test1.S.o test2.S.o test3.c.o test4.S.o
+all: test1.bin test2.bin test3.bin test4.bin test5.bin
 
-docker:
-	docker build -t gcc-mips .
+%.bin: %.o
+	$(LD) -o $@ $<
 
-%.S.o: %.S
+%.o: %.S
 	$(CC) -march=r3000 -mfp32 -mgp32 -mno-plt -c -o $@ $<
 
-%.c.o: %.c
-	$(CC) -march=r3000 -mfp32 -mgp32 -mno-plt -O2 -c -o $@ $<
+%.o: %.c
+	$(CC) -march=r3000 -mfp32 -mgp32 -mno-plt -c -o $@ $<

@@ -9,6 +9,9 @@ About
 
 -Work in Progress-
 
+
+https://cgi.cse.unsw.edu.au/~cs3231/doc/R3000.pdf
+
 License
 -------
 

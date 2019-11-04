@@ -68,8 +68,6 @@ void Linker::run(std::ostream &out) const
     if (this->_input.size() > 1u)
         throw LinkerError("currently only a single input file is supported");
 
-    uint32_t pc = this->_entry;
-
     for (std::string input : this->_input) {
         std::vector<uint8_t> data = loadBinaryFile(input);
 
@@ -88,26 +86,18 @@ void Linker::run(std::ostream &out) const
                     if (*p != 0)
                         throw LinkerError("data section of '" + input + "' is not empty (this is not supported yet)");
                 }
-            }
 
-            // Emit code to setup the Global Offset Table and prepare $gp
-            uint32_t gp = this->_tdata + this->_sdata - 4;
-            out << OP::LUI(28, gp >> 16);
-            pc += 4;
-            if (gp & 0xffff) {
-                out << OP::ADDIU(28, 28, gp & 0xffff);
-                pc += 4;
-            }
+                // Emit code to setup the Global Offset Table and prepare $gp
+                uint32_t gp = this->_tdata + this->_sdata - 4;
+                out << OP::LUI(28, gp >> 16);
+                if (gp & 0xffff)
+                    out << OP::ORI(28, 28, gp & 0xffff);
 
-            if (dataSize > 0) {
                 out << OP::LUI(1, this->_tdata >> 16);
-                if (this->_tdata & 0xffff) {
-                    out << OP::ADDIU(1, 1, this->_tdata & 0xffff);
-                    pc += 4;
-                }
+                if (this->_tdata & 0xffff)
+                    out << OP::ORI(1, 1, this->_tdata & 0xffff);
                 out << OP::SW(1, 0, 28)
                     << OP::OR(1, 0, 0);
-                pc += 12;
             }
         }
 
@@ -132,12 +122,16 @@ void Linker::run(std::ostream &out) const
                 }
 
                 if (est == ELFSymbolType::Func) {
+                    // Setup stack
+                    uint32_t sp = this->_tdata + this->_sdata - 8;
+                    out << OP::LUI(29, sp >> 16);
+                    if (sp & 0xffff)
+                        out << OP::ORI(29, 29, sp & 0xffff);
                     // Emit call and exit code
-                    out << OP::JAL((pc >> 2) + 4)
+                    out << OP::BGEZAL(0, 3)
                         << OP()
                         << OP::JR(0)
                         << OP();
-                    pc += 16;
                 }
 
                 uint8_t *text = data.data() + textSection.offset;
@@ -180,7 +174,6 @@ void Linker::run(std::ostream &out) const
                 }
 
                 out.write(reinterpret_cast<char *>(data.data()) + textSection.offset, textSection.size);
-                pc += textSection.size;
                 foundMain = true;
                 break;
             }

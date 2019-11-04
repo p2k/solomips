@@ -26,6 +26,33 @@
 
 using namespace SoloMIPS;
 
+static void runDisassemble(const uint8_t *data, uint32_t size, bool hasEntry, uint32_t entry, std::ostream &out)
+{
+    std::ios::fmtflags flags = out.flags();
+    out.unsetf(std::ios::binary);
+    OP op;
+    std::stringstream str;
+    str << std::setfill('0') << std::setw(8) << std::hex;
+    for (uint32_t i = 0; i+3 < size; i += 4) {
+        if (hasEntry) {
+            str << (entry + i);
+            out << str.str() << "  ";
+            str.str("");
+        }
+
+        try {
+            op.decode(&data[i]);
+            out << op << std::endl;
+        }
+        catch (InvalidOPException &) {
+            str << "Invalid instruction at offset 0x" << i;
+            throw InvalidOPException(str.str());
+        }
+    }
+    out.flags(flags);
+}
+
+
 InvalidOPException::InvalidOPException()
     : _msg("Invalid instruction") {}
 
@@ -47,37 +74,28 @@ OP::OP(uint32_t word)
 
 void OP::disassemble(const uint8_t *data, uint32_t size, std::ostream &out)
 {
-    std::ios::fmtflags flags = out.flags();
-    out.unsetf(std::ios::binary);
-    OP op;
-    for (uint32_t i = 0; i+3 < size; i += 4) {
-        try {
-            op.decode(&data[i]);
-            out << op << std::endl;
-        }
-        catch (InvalidOPException &) {
-            std::stringstream str;
-            str << "Invalid instruction at offset 0x" << std::setfill('0') << std::setw(4) << std::hex << i;
-            throw InvalidOPException(str.str());
-        }
-    }
-    out.flags(flags);
+    runDisassemble(data, size, false, 0, out);
 }
 
-OP OP::ADDIU(uint8_t rt, uint8_t rs, uint16_t imm)
+void OP::disassemble(const uint8_t *data, uint32_t size, uint32_t entry, std::ostream &out)
 {
-    OP op;
-    op.opcode = Opcode::ADDIU;
-    op.rs = rs;
-    op.rt = rt;
-    op.imm = imm;
-    return op;
+    runDisassemble(data, size, true, entry, out);
 }
 
 OP OP::LUI(uint8_t rt, uint16_t imm)
 {
     OP op;
     op.opcode = Opcode::LUI;
+    op.rt = rt;
+    op.imm = imm;
+    return op;
+}
+
+OP OP::ORI(uint8_t rt, uint8_t rs, uint16_t imm)
+{
+    OP op;
+    op.opcode = Opcode::ORI;
+    op.rs = rs;
     op.rt = rt;
     op.imm = imm;
     return op;
@@ -113,11 +131,13 @@ OP OP::JR(uint8_t rs)
     return op;
 }
 
-OP OP::JAL(uint32_t addr)
+OP OP::BGEZAL(uint8_t rs, int16_t simm)
 {
     OP op;
-    op.opcode = Opcode::JAL;
-    op.addr = addr & 0x3ffffff;
+    op.opcode = Opcode::REGIMM;
+    op.rs = rs;
+    op.rt = OP_REGIMM_BGEZAL;
+    op.simm = simm;
     return op;
 }
 
@@ -290,12 +310,14 @@ std::ostream &operator<<(std::ostream &out, const OP &op)
 
     // Arguments
     switch (op.opcode) {
-        case Opcode::ADDI:
         case Opcode::BEQ:
         case Opcode::BNE:
             out << " r" << static_cast<uint16_t>(op.rs) << ", r" << static_cast<uint16_t>(op.rt) << ", " << op.simm;
             break;
+        case Opcode::ADDI:
         case Opcode::ADDIU:
+            out << " r" << static_cast<uint16_t>(op.rt) << ", r" << static_cast<uint16_t>(op.rs) << ", " << op.simm;
+            break;
         case Opcode::ANDI:
         case Opcode::ORI:
         case Opcode::XORI:

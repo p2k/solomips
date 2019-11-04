@@ -22,6 +22,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "defaults.hxx"
 #include "linker.hxx"
 #include "io.hxx"
 
@@ -73,9 +74,9 @@ int main(int argc, char **argv)
 
     bool disassemble = false;
     std::string output = "a.out";
-    uint32_t entry = 0x10000000u;
-    uint32_t tdata = 0x20000000u;
-    uint32_t sdata = 0x4000000u;
+    uint32_t entry = SOLOMIPS_DEFAULT_ENTRY;
+    uint32_t tdata = SOLOMIPS_DEFAULT_DATA_ADDR;
+    uint32_t sdata = SOLOMIPS_DEFAULT_DATA_SIZE;
     std::vector<std::string> input;
 
     for (int i = 1; i < argc; ++i) {

@@ -186,17 +186,17 @@ void R3000::step()
             break;
         case Opcode::REGIMM:
             switch (op.rt) {
-                case 0b10000: // BLTZAL
+                case OP_REGIMM_BLTZAL:
                     r[31] = pc;
-                case 0b00000: // BLTZ
+                case OP_REGIMM_BLTZ:
                     if (r[op.rs] < 0)
-                        pc += static_cast<int32_t>(op.simm) << 2;
+                        pc += (static_cast<int32_t>(op.simm) << 2) - 4;
                     break;
-                case 0b10001: // BGEZAL
+                case OP_REGIMM_BGEZAL:
                     r[31] = pc;
-                case 0b00001: // BGEZ
+                case OP_REGIMM_BGEZ:
                     if (r[op.rs] >= 0)
-                        pc += static_cast<int32_t>(op.simm) << 2;
+                        pc += (static_cast<int32_t>(op.simm) << 2) - 4;
                     break;
                 default:
                     throw InvalidOPException();
@@ -209,25 +209,25 @@ void R3000::step()
             break;
         case Opcode::BEQ:
             if (r[op.rs] == r[op.rt])
-                pc += static_cast<int32_t>(op.simm) << 2;
+                pc += (static_cast<int32_t>(op.simm) << 2) - 4;
             break;
         case Opcode::BNE:
             if (r[op.rs] != r[op.rt])
-                pc += static_cast<int32_t>(op.simm) << 2;
+                pc += (static_cast<int32_t>(op.simm) << 2) - 4;
             break;
         case Opcode::BLEZ:
             if (r[op.rs] <= 0)
-                pc += static_cast<int32_t>(op.simm) << 2;
+                pc += (static_cast<int32_t>(op.simm) << 2) - 4;
             break;
         case Opcode::BGTZ:
             if (r[op.rs] > 0)
-                pc += static_cast<int32_t>(op.simm) << 2;
+                pc += (static_cast<int32_t>(op.simm) << 2) - 4;
             break;
         case Opcode::ADDI:
             sr[op.rt] = sr[op.rs] + op.simm;
             break;
         case Opcode::ADDIU:
-            r[op.rt] = r[op.rs] + op.imm;
+            r[op.rt] = r[op.rs] + op.simm;
             break;
         case Opcode::SLTI:
             r[op.rt] = (sr[op.rs] < op.simm);

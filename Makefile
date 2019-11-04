@@ -19,7 +19,7 @@
 # along with SoloMIPS.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all simulator testbench toolchain
+.PHONY: all simulator testbench
 
 all: simulator testbench
 
@@ -36,6 +36,3 @@ testbench: build/Makefile
 	$(MAKE) -C build solomips-test
 	mkdir -p bin
 	install -C -m 755 build/solomips-test bin/mips_testbench
-
-toolchain:
-	$(MAKE) -C toolchain

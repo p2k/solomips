@@ -114,19 +114,25 @@ enum class Funct : unsigned int
     SLTU = 0b101011,
 };
 
+#define OP_REGIMM_BLTZAL 0b10000
+#define OP_REGIMM_BLTZ 0b00000
+#define OP_REGIMM_BGEZAL 0b10001
+#define OP_REGIMM_BGEZ 0b00001
+
 struct OP
 {
     OP();
     explicit OP(uint32_t word);
 
     static void disassemble(const uint8_t *data, uint32_t size, std::ostream &out);
+    static void disassemble(const uint8_t *data, uint32_t size, uint32_t entry, std::ostream &out);
 
-    static OP ADDIU(uint8_t rt, uint8_t rs, uint16_t imm);
     static OP LUI(uint8_t rt, uint16_t imm);
+    static OP ORI(uint8_t rt, uint8_t rs, uint16_t imm);
     static OP SW(uint8_t rt, int16_t offset, uint8_t base);
     static OP OR(uint8_t rd, uint8_t rs, uint8_t rt);
     static OP JR(uint8_t rs);
-    static OP JAL(uint32_t addr);
+    static OP BGEZAL(uint8_t rs, int16_t simm);
 
     void decode(const uint8_t *p);
     void decode(uint32_t word);

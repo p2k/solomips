@@ -44,7 +44,7 @@ private:
 class Linker
 {
 public:
-    Linker(const std::vector<std::string> &input, uint32_t entry = 0x10000000, uint32_t tdata = 0x20000000, uint32_t sdata = 0x4000000);
+    Linker(const std::vector<std::string> &input, uint32_t entry, uint32_t tdata, uint32_t sdata);
 
     void run(std::ostream &out) const;
     void disassemble(std::ostream &out) const;

@@ -22,6 +22,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "defaults.hxx"
 #include "io.hxx"
 #include "ram.hxx"
 #include "cpu.hxx"
@@ -53,7 +54,7 @@ int main(int argc, char **argv)
     }
 
     // Prepare ROM
-    ArrayRAMMapper rom(0x10000000u, RAMMapperFlag::Readable | RAMMapperFlag::Executable);
+    ArrayRAMMapper rom(SOLOMIPS_DEFAULT_ENTRY, RAMMapperFlag::Readable | RAMMapperFlag::Executable);
 
     // Load program
     try {
@@ -67,7 +68,7 @@ int main(int argc, char **argv)
     // Disassemble
     if (disassemble) {
         try {
-            OP::disassemble(rom.data(), rom.size(), std::cout);
+            OP::disassemble(rom.data(), rom.size(), SOLOMIPS_DEFAULT_ENTRY, std::cout);
         }
         catch (InvalidOPException &e) {
             std::cerr << e.what();
@@ -77,14 +78,14 @@ int main(int argc, char **argv)
     }
 
     // Allocate work RAM
-    ArrayRAMMapper wram(0x20000000u, 0x4000000u);
+    ArrayRAMMapper wram(SOLOMIPS_DEFAULT_DATA_ADDR, SOLOMIPS_DEFAULT_DATA_SIZE);
 
     // Setup i/o RAM
-    InputRAMMapper iram(0x30000000);
-    OutputRAMMapper oram(0x30000004);
+    InputRAMMapper iram(SOLOMIPS_DEFAULT_I_ADDR);
+    OutputRAMMapper oram(SOLOMIPS_DEFAULT_O_ADDR);
 
     // Setup CPU
-    R3000 cpu(0x10000000);
+    R3000 cpu(SOLOMIPS_DEFAULT_ENTRY);
     cpu.ram.addMapper(&rom);
     cpu.ram.addMapper(&iram);
     cpu.ram.addMapper(&oram);
@@ -95,23 +96,23 @@ int main(int argc, char **argv)
         cpu.run();
     }
     catch (ArithmeticException &e) {
-        std::cerr << "error: arithmetic exception at " << (cpu.pc - 4) << ": " << e.what() << std::endl;
+        std::cerr << "error: arithmetic exception at 0x" << std::setfill('0') << std::setw(8) << std::hex << (cpu.pc - 8) << ": " << e.what() << std::endl;
         return -10;
     }
     catch (MemoryException &e) {
-        std::cerr << "error: memory exception at " << (cpu.pc - 4) << ": " << e.what() << std::endl;
+        std::cerr << "error: memory exception at 0x" << std::setfill('0') << std::setw(8) << std::hex << (cpu.pc - 8) << ": " << e.what() << std::endl;
         return -11;
     }
     catch (InvalidOPException &) {
-        std::cerr << "error: invalid instruction at " << (cpu.pc - 4) << std::endl;
+        std::cerr << "error: invalid instruction at 0x" << std::setfill('0') << std::setw(8) << std::hex << (cpu.pc - 8) << std::endl;
         return -12;
     }
     catch (std::ios_base::failure &e) {
-        std::cerr << "error: i/o exception at " << (cpu.pc - 4) << ": " << e.what() << std::endl;
+        std::cerr << "error: i/o exception at 0x" << std::setfill('0') << std::setw(8) << std::hex << (cpu.pc - 8) << ": " << e.what() << std::endl;
         return -21;
     }
     catch (std::exception &e) {
-        std::cerr << "error: unknown exception at " << (cpu.pc - 4) << ": " << e.what() << std::endl;
+        std::cerr << "error: unknown exception at 0x" << std::setfill('0') << std::setw(8) << std::hex << (cpu.pc - 8) << ": " << e.what() << std::endl;
         return -20;
     }
 

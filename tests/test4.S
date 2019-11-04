@@ -3,7 +3,7 @@
     .set noreorder
     .globl main
 main:
-    li $v0, 20
+    li $v0, 65532
     j test2
     nop
 
