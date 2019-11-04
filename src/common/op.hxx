@@ -125,6 +125,8 @@ struct OP
     static OP LUI(uint8_t rt, uint16_t imm);
     static OP SW(uint8_t rt, int16_t offset, uint8_t base);
     static OP OR(uint8_t rd, uint8_t rs, uint8_t rt);
+    static OP JR(uint8_t rs);
+    static OP JAL(uint32_t addr);
 
     void decode(const uint8_t *p);
     void decode(uint32_t word);

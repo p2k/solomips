@@ -55,7 +55,7 @@ void OP::disassemble(const uint8_t *data, uint32_t size, std::ostream &out)
             op.decode(&data[i]);
             out << op << std::endl;
         }
-        catch (InvalidOPException &e) {
+        catch (InvalidOPException &) {
             std::stringstream str;
             str << "Invalid instruction at offset 0x" << std::setfill('0') << std::setw(4) << std::hex << i;
             throw InvalidOPException(str.str());
@@ -101,6 +101,23 @@ OP OP::OR(uint8_t rd, uint8_t rs, uint8_t rt)
     op.rs = rs;
     op.rt = rt;
     op.rd = rd;
+    return op;
+}
+
+OP OP::JR(uint8_t rs)
+{
+    OP op;
+    op.opcode = Opcode::SPECIAL;
+    op.funct = Funct::JR;
+    op.rs = rs;
+    return op;
+}
+
+OP OP::JAL(uint32_t addr)
+{
+    OP op;
+    op.opcode = Opcode::JAL;
+    op.addr = addr & 0x3ffffff;
     return op;
 }
 
@@ -305,7 +322,7 @@ std::ostream &operator<<(std::ostream &out, const OP &op)
         case Opcode::J:
         case Opcode::JAL: {
             std::stringstream str;
-            str << " 0x" << std::setfill('0') << std::setw(4) << std::hex << op.addr;
+            str << " 0x" << std::setfill('0') << std::setw(8) << std::hex << op.addr;
             out << str.str();
             break;
         }

@@ -35,6 +35,7 @@ static void showUsage(const char *argv0)
     std::cerr << "  -e ADDRESS, --entry ADDRESS Set start address (default: 0x10000000)" << std::endl;
     std::cerr << "  -Tdata ADDRESS              Set address of .data section (default: 0x20000000)" << std::endl;
     std::cerr << "  -Sdata SIZE                 Set size of .data section (default: 0x4000000)" << std::endl;
+    std::cerr << "  -d, --disassemble           Print a disassembly of all input files (ignores -o)" << std::endl;
     std::cerr << "  -h, --help                  Print option help" << std::endl;
     std::cerr << "  -v, --version               Print version information" << std::endl;
 }
@@ -70,6 +71,7 @@ int main(int argc, char **argv)
         args.push_back(const_cast<const char *>(argv[i]));
     }
 
+    bool disassemble = false;
     std::string output = "a.out";
     uint32_t entry = 0x10000000u;
     uint32_t tdata = 0x20000000u;
@@ -106,6 +108,9 @@ int main(int argc, char **argv)
             }
             ++i;
         }
+        else if (args[i] == "-d" || args[i] == "--disassemble") {
+            disassemble = true;
+        }
         else if (args[i] == "Tdata") {
             if (!checkArg(args, i, argc) || !parseUInt32(args[i+1], &tdata))
                 return 2;
@@ -134,6 +139,22 @@ int main(int argc, char **argv)
     }
 
     Linker ld(input, entry, tdata, sdata);
+
+    if (disassemble) {
+        int ret = 0;
+        try {
+            ld.disassemble(std::cout);
+        }
+        catch (IOException &e) {
+            std::cerr << "error: " << e.what() << std::endl;
+            ret = 3;
+        }
+        catch (LinkerError &e) {
+            std::cerr << "error: " << e.what() << std::endl;
+            ret = 3;
+        }
+        return ret;
+    }
 
     std::ofstream out;
     out.open(output, std::ios::out | std::ios::binary);

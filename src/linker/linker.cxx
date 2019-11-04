@@ -19,6 +19,7 @@
  *  along with SoloMIPS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <climits>
 #include <iostream>
 
 #include "linker.hxx"
@@ -28,83 +29,120 @@
 
 using namespace SoloMIPS;
 
+static void parseCheckObjectData(const std::string &input, const std::vector<uint8_t> &data, ELF32Object &obj)
+{
+    if (!obj.parse(data))
+        throw LinkerError("'" + input + "' is not a valid ELF32 object file");
+
+    if (obj.machine != ELFMachineType::MIPS)
+        throw LinkerError("unsupported machine type in ELF object file '" + input + "'");
+    if (obj.type != ELFObjectType::Rel)
+        throw LinkerError("unsupported ELF object type in file '" + input + "'");
+
+    if (obj.indexOfSection(".text") == SIZE_MAX)
+        throw LinkerError("object file '" + input + "' does not contain any code");
+    if (obj.indexOfSection(".symtab") == SIZE_MAX)
+        throw LinkerError("object file '" + input + "' does not contain a symbol table");
+}
+
+static size_t findRelocationTable(size_t textSectionIndex, const ELF32Object &obj)
+{
+    for (size_t tir = 0; tir < obj.sections.size(); ++tir) {
+        if (obj.sections[tir].type == ELFSectionType::Rel && obj.sections[tir].info == textSectionIndex) {
+            return tir;
+        }
+    }
+
+    return SIZE_MAX;
+}
+
 Linker::Linker(const std::vector<std::string> &input, uint32_t entry, uint32_t tdata, uint32_t sdata)
     : _input(input), _entry(entry), _tdata(tdata), _sdata(sdata) {}
 
-void Linker::run(std::ostream &out)
+void Linker::run(std::ostream &out) const
 {
     out.setf(std::ios::binary);
 
-    if (this->_input.size() == 0)
+    if (this->_input.size() == 0u)
         throw LinkerError("no input files");
-    if (this->_input.size() > 1)
+    if (this->_input.size() > 1u)
         throw LinkerError("currently only a single input file is supported");
+
+    uint32_t pc = this->_entry;
 
     for (std::string input : this->_input) {
         std::vector<uint8_t> data = loadBinaryFile(input);
 
         // Parse and do all sorts of checks
         ELF32Object obj;
-        if (!obj.parse(data))
-            throw LinkerError("'" + input + "' is not a valid ELF32 object file");
-
-        if (obj.machine != ELFMachineType::MIPS)
-            throw LinkerError("unsupported machine type in ELF object file '" + input + "'");
-        if (obj.type != ELFObjectType::Rel)
-            throw LinkerError("unsupported ELF object type in file '" + input + "'");
-
-        size_t ti = obj.indexOfSection(".text");
-        if (ti == SIZE_T_MAX)
-            throw LinkerError("object file '" + input + "' does not contain any code");
-        ELF32Section &textSection = obj.sections[ti];
+        parseCheckObjectData(input, data, obj);
 
         size_t di = obj.indexOfSection(".data");
-        if (di != SIZE_T_MAX) {
+        if (di != SIZE_MAX) {
             uint32_t dataSize = obj.sections[di].size;
-            if (dataSize > this->_sdata)
+            if (dataSize > this->_sdata - 4)
                 throw LinkerError("data section of '" + input + "' is too large");
-            for (uint8_t *p = data.data() + obj.sections[di].offset, *e = p + dataSize; p != e; ++p) {
-                if (*p != 0)
-                    throw LinkerError("data section of '" + input + "' is not empty (this is not supported yet)");
+
+            if (dataSize > 0) {
+                for (uint8_t *p = data.data() + obj.sections[di].offset, *e = p + dataSize; p != e; ++p) {
+                    if (*p != 0)
+                        throw LinkerError("data section of '" + input + "' is not empty (this is not supported yet)");
+                }
             }
 
             // Emit code to setup the Global Offset Table and prepare $gp
             uint32_t gp = this->_tdata + this->_sdata - 4;
             out << OP::LUI(28, gp >> 16);
-            if (gp & 0xffff)
+            pc += 4;
+            if (gp & 0xffff) {
                 out << OP::ADDIU(28, 28, gp & 0xffff);
-            out << OP::LUI(1, this->_tdata >> 16);
-            if (this->_tdata & 0xffff)
-                out << OP::ADDIU(1, 1, this->_tdata & 0xffff);
-            out << OP::SW(1, 0, 28)
-                << OP::OR(1, 0, 0);
+                pc += 4;
+            }
+
+            if (dataSize > 0) {
+                out << OP::LUI(1, this->_tdata >> 16);
+                if (this->_tdata & 0xffff) {
+                    out << OP::ADDIU(1, 1, this->_tdata & 0xffff);
+                    pc += 4;
+                }
+                out << OP::SW(1, 0, 28)
+                    << OP::OR(1, 0, 0);
+                pc += 12;
+            }
         }
 
+        bool foundMain = false;
         size_t si = obj.indexOfSection(".symtab");
-        if (si == SIZE_T_MAX)
-            throw LinkerError("object file '" + input + "' does not contain a symbol table");
-
-        size_t tir = obj.indexOfSection(".rel.text");
-        if (tir != SIZE_T_MAX) {
-            if (obj.sections[tir].link != si)
-                throw LinkerError("code relocation table of object file '" + input + "' does not point to the correct symbol table");
-            if (obj.sections[tir].info != ti)
-                throw LinkerError("code relocation table of object file '" + input + "' does not point to the correct code section");
-            if (obj.sections[tir].type != ELFSectionType::Rel)
-                throw LinkerError("code relocation table of object file '" + input + "' is of an unsupported type");
-        }
-
         std::vector<ELFSymbolTableEntry> &symbolTable = obj.sections[si].symbolTable;
         for (ELFSymbolTableEntry &entry : symbolTable) {
-            if (entry.name == "main" && entry.shndx == ti) {
-                if (entry.type() != ELFSymbolType::Object)
-                    throw LinkerError("\"main\" symbol in object file '" + input + "' must be an object (functions not supported yet)");
-                if (entry.value != 0)
-                    throw LinkerError("\"main\" symbol in object file '" + input + "' must point to the first instruction");
+            if (entry.name == "main") {
+                ELFSymbolType est = entry.type();
+                if (entry.value != 0 && est != ELFSymbolType::Func)
+                    throw LinkerError("\"main\" symbol in object file '" + input + "', if not a function, must point to the first instruction");
+
+                size_t ti = entry.shndx;
+                ELF32Section &textSection = obj.sections[ti];
+                if (textSection.type != ELFSectionType::ProgBits)
+                    throw LinkerError("\"main\" symbol in object file '" + input + "' does not point to a text section");
+
+                size_t tir = findRelocationTable(ti, obj);
+                if (tir != SIZE_MAX) {
+                    if (obj.sections[tir].link != si)
+                        throw LinkerError("code relocation table of object file '" + input + "' does not point to the correct symbol table");
+                }
+
+                if (est == ELFSymbolType::Func) {
+                    // Emit call and exit code
+                    out << OP::JAL((pc >> 2) + 4)
+                        << OP()
+                        << OP::JR(0)
+                        << OP();
+                    pc += 16;
+                }
 
                 uint8_t *text = data.data() + textSection.offset;
                 // Do relocations
-                if (tir != SIZE_T_MAX) {
+                if (tir != SIZE_MAX) {
                     std::vector<ELFRelTableEntry> &relTable = obj.sections[tir].relTable;
                     for (size_t i = 0; i < relTable.size(); ++i) {
                         ELFRelTableEntry &rentry = relTable[i];
@@ -141,11 +179,50 @@ void Linker::run(std::ostream &out)
                     }
                 }
 
-                out.write(reinterpret_cast<char *>(data.data()) + obj.sections[ti].offset, obj.sections[ti].size);
-                return;
+                out.write(reinterpret_cast<char *>(data.data()) + textSection.offset, textSection.size);
+                pc += textSection.size;
+                foundMain = true;
+                break;
             }
         }
 
-        throw LinkerError("object file '" + input + "' does not contain a \"main\" symbol");
+        if (!foundMain)
+            throw LinkerError("object file '" + input + "' does not contain a \"main\" symbol");
+    }
+}
+
+void Linker::disassemble(std::ostream &out) const
+{
+    if (this->_input.size() == 0u)
+        throw LinkerError("no input files");
+    if (this->_input.size() > 1u)
+        throw LinkerError("currently only a single input file is supported");
+
+    for (std::string input : this->_input) {
+        std::vector<uint8_t> data = loadBinaryFile(input);
+
+        ELF32Object obj;
+        parseCheckObjectData(input, data, obj);
+
+        bool foundMain = false;
+        size_t si = obj.indexOfSection(".symtab");
+        std::vector<ELFSymbolTableEntry> &symbolTable = obj.sections[si].symbolTable;
+        for (ELFSymbolTableEntry &entry : symbolTable) {
+            if (entry.name == "main") {
+                size_t ti = entry.shndx;
+                ELF32Section &textSection = obj.sections[ti];
+                if (textSection.type != ELFSectionType::ProgBits)
+                    throw LinkerError("\"main\" symbol in object file '" + input + "' does not point to a text section");
+
+                const uint8_t *text = data.data() + textSection.offset;
+                out << input << ":" << std::endl;
+                OP::disassemble(text, textSection.size, out);
+                out << std::endl;
+                foundMain = true;
+            }
+        }
+
+        if (!foundMain)
+            throw LinkerError("object file '" + input + "' does not contain a \"main\" symbol");
     }
 }
