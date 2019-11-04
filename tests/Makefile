@@ -19,6 +19,20 @@
 # along with SoloMIPS.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+ifeq ($(OS),Windows_NT)
+BIN_SUFFIX=.exe
+else
+BIN_SUFFIX=
+endif
+
+TOOLCHAIN_GCC=../toolchain/bin/mips-linux-gnu-gcc$(BIN_SUFFIX)
+
+ifneq (,$(wildcard $(TOOLCHAIN_GCC)))
+CC=$(TOOLCHAIN_GCC)
+else
+CC?=mips-linux-gnu-gcc
+endif
+
 .PHONY: all docker
 
 all: test1.S.o test2.S.o test3.c.o test4.S.o
@@ -27,7 +41,7 @@ docker:
 	docker build -t gcc-mips .
 
 %.S.o: %.S
-	docker run --rm -v $(PWD):/src gcc-mips mips-linux-gnu-gcc -march=r3000 -mfp32 -mgp32 -mno-plt -c -o $@ $<
+	$(CC) -march=r3000 -mfp32 -mgp32 -mno-plt -c -o $@ $<
 
 %.c.o: %.c
-	docker run --rm -v $(PWD):/src gcc-mips mips-linux-gnu-gcc -march=r3000 -mfp32 -mgp32 -mno-plt -O2 -c -o $@ $<
+	$(CC) -march=r3000 -mfp32 -mgp32 -mno-plt -O2 -c -o $@ $<

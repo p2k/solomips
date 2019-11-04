@@ -19,6 +19,8 @@
  *  along with SoloMIPS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <climits>
+
 #include "elf.hxx"
 
 using namespace SoloMIPS;
@@ -42,23 +44,23 @@ ELFSectionFlags operator~(ELFSectionFlags f)
 ELF32Section::ELF32Section()
     : nameIndex(0), type(ELFSectionType::Null), flags(ELFSectionFlags::None), addr(0), offset(0), size(0), link(0), info(0), addralign(0), entsize(0) {}
 
-ELF32Section::ELF32Section(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t offset)
+ELF32Section::ELF32Section(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t sectionOffset)
 {
-    this->parseHeader(obj, data, offset);
+    this->parseHeader(obj, data, sectionOffset);
 }
 
-void ELF32Section::parseHeader(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t offset)
+void ELF32Section::parseHeader(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t sectionOffset)
 {
-    this->nameIndex = obj->readWord(data, offset);
-    this->type = static_cast<ELFSectionType>(obj->readWord(data, offset+4));
-    this->flags = static_cast<ELFSectionFlags>(obj->readWord(data, offset+8));
-    this->addr = obj->readWord(data, offset+12);
-    this->offset = obj->readWord(data, offset+16);
-    this->size = obj->readWord(data, offset+20);
-    this->link = obj->readWord(data, offset+24);
-    this->info = obj->readWord(data, offset+28);
-    this->addralign = obj->readWord(data, offset+32);
-    this->entsize = obj->readWord(data, offset+36);
+    this->nameIndex = obj->readWord(data, sectionOffset);
+    this->type = static_cast<ELFSectionType>(obj->readWord(data, sectionOffset+4));
+    this->flags = static_cast<ELFSectionFlags>(obj->readWord(data, sectionOffset+8));
+    this->addr = obj->readWord(data, sectionOffset+12);
+    this->offset = obj->readWord(data, sectionOffset+16);
+    this->size = obj->readWord(data, sectionOffset+20);
+    this->link = obj->readWord(data, sectionOffset+24);
+    this->info = obj->readWord(data, sectionOffset+28);
+    this->addralign = obj->readWord(data, sectionOffset+32);
+    this->entsize = obj->readWord(data, sectionOffset+36);
 }
 
 void ELF32Section::readSymbolTable(const ELF32Object *obj, const std::vector<uint8_t> &data)
@@ -69,8 +71,8 @@ void ELF32Section::readSymbolTable(const ELF32Object *obj, const std::vector<uin
         return;
 
     this->symbolTable.clear();
-    for (size_t s = 0, offset = this->offset; s < this->size; s += this->entsize, offset += this->entsize) {
-        this->symbolTable.push_back(ELFSymbolTableEntry(obj, data, offset, this->link));
+    for (size_t s = 0, entryOffset = this->offset; s < this->size; s += this->entsize, entryOffset += this->entsize) {
+        this->symbolTable.push_back(ELFSymbolTableEntry(obj, data, entryOffset, this->link));
     }
 }
 
@@ -78,27 +80,27 @@ void ELF32Section::readRelTable(const ELF32Object *obj, const std::vector<uint8_
 {
     if ((this->type != ELFSectionType::Rel && this->type != ELFSectionType::RelA)
             || this->offset == 0
-            || this->entsize < (this->type == ELFSectionType::Rel ? 8 : 12))
+            || this->entsize < (this->type == ELFSectionType::Rel ? 8u : 12u))
         return;
 
     this->relTable.clear();
-    for (size_t s = 0, offset = this->offset; s < this->size; s += this->entsize, offset += this->entsize) {
-        this->relTable.push_back(ELFRelTableEntry(obj, data, offset, this->type == ELFSectionType::RelA));
+    for (size_t s = 0, entryOffset = this->offset; s < this->size; s += this->entsize, entryOffset += this->entsize) {
+        this->relTable.push_back(ELFRelTableEntry(obj, data, entryOffset, this->type == ELFSectionType::RelA));
     }
 }
 
 ELFSymbolTableEntry::ELFSymbolTableEntry()
     : value(0), size(0), info(0), other(0), shndx(0) {}
 
-ELFSymbolTableEntry::ELFSymbolTableEntry(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t offset, size_t link)
+ELFSymbolTableEntry::ELFSymbolTableEntry(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t entryOffset, size_t link)
 {
-    this->name = obj->readStringTable(data, link, obj->readWord(data, offset));
-    this->value = obj->readWord(data, offset+4);
-    this->size = obj->readWord(data, offset+8);
-    uint16_t infoOther = obj->readHalf(data, offset+12);
+    this->name = obj->readStringTable(data, link, obj->readWord(data, entryOffset));
+    this->value = obj->readWord(data, entryOffset+4);
+    this->size = obj->readWord(data, entryOffset+8);
+    uint16_t infoOther = obj->readHalf(data, entryOffset+12);
     this->info = infoOther >> 8;
     this->other = infoOther & 0xff;
-    this->shndx = obj->readHalf(data, offset+14);
+    this->shndx = obj->readHalf(data, entryOffset+14);
 }
 
 bool ELFSymbolTableEntry::isLocal() const
@@ -130,12 +132,12 @@ ELFSymbolType ELFSymbolTableEntry::type() const
 ELFRelTableEntry::ELFRelTableEntry()
     : offset(0), info(0), addend(0) {}
 
-ELFRelTableEntry::ELFRelTableEntry(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t offset, bool hasAddend)
+ELFRelTableEntry::ELFRelTableEntry(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t entryOffset, bool hasAddend)
 {
-    this->offset = obj->readWord(data, offset);
-    this->info = obj->readWord(data, offset+4);
+    this->offset = obj->readWord(data, entryOffset);
+    this->info = obj->readWord(data, entryOffset+4);
     if (hasAddend)
-        this->addend = obj->readWord(data, offset+8);
+        this->addend = obj->readWord(data, entryOffset+8);
     else
         this->addend = 0;
 }
@@ -188,8 +190,8 @@ bool ELF32Object::parse(const std::vector<uint8_t> &data)
     if (data.size() < end)
         return false;
 
-    for (size_t i = 0, offset = this->shoff; i < this->shnum; ++i, offset += this->shentsize) {
-        this->sections.push_back(ELF32Section(this, data, offset));
+    for (size_t i = 0, sectionOffset = this->shoff; i < this->shnum; ++i, sectionOffset += this->shentsize) {
+        this->sections.push_back(ELF32Section(this, data, sectionOffset));
     }
     for (ELF32Section &section : this->sections) {
         if (section.offset + section.size >= data.size())
@@ -213,7 +215,7 @@ size_t ELF32Object::indexOfSection(const std::string &name)
         else
             ++i;
     }
-    return SIZE_T_MAX;
+    return SIZE_MAX;
 }
 
 uint16_t ELF32Object::readHalf(const std::vector<uint8_t> &data, size_t offset) const

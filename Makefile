@@ -19,7 +19,7 @@
 # along with SoloMIPS.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all simulator testbench
+.PHONY: all simulator testbench toolchain
 
 all: simulator testbench
 
@@ -28,11 +28,14 @@ build/Makefile: CMakeLists.txt
 	cd build && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
 
 simulator: build/Makefile
-	$(MAKE) -C build solomips_emu
+	$(MAKE) -C build solomips-emu
 	mkdir -p bin
 	install -C -m 755 build/solomips-emu bin/mips_simulator
 
 testbench: build/Makefile
-	$(MAKE) -C build solomips_test
+	$(MAKE) -C build solomips-test
 	mkdir -p bin
 	install -C -m 755 build/solomips-test bin/mips_testbench
+
+toolchain:
+	$(MAKE) -C toolchain

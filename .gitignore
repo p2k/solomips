@@ -10,6 +10,8 @@ build/
 build_*/
 tests/*.o
 tests/*.bin
+toolchain/*
+!toolchain/Makefile
 
 # Other
 *.swp

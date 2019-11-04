@@ -131,7 +131,7 @@ struct ELF32Object;
 struct ELFSymbolTableEntry
 {
     ELFSymbolTableEntry();
-    ELFSymbolTableEntry(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t offset, size_t link);
+    ELFSymbolTableEntry(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t entryOffset, size_t link);
 
     bool isLocal() const;
     bool isGlobal() const;
@@ -152,7 +152,7 @@ struct ELFSymbolTableEntry
 struct ELFRelTableEntry
 {
     ELFRelTableEntry();
-    ELFRelTableEntry(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t offset, bool hasAddend);
+    ELFRelTableEntry(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t entryOffset, bool hasAddend);
 
     uint32_t sym() const;
     ELFRelType type() const;
@@ -165,8 +165,8 @@ struct ELFRelTableEntry
 struct ELF32Section
 {
     ELF32Section();
-    ELF32Section(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t offset);
-    void parseHeader(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t offset);
+    ELF32Section(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t sectionOffset);
+    void parseHeader(const ELF32Object *obj, const std::vector<uint8_t> &data, size_t sectionOffset);
     void readSymbolTable(const ELF32Object *obj, const std::vector<uint8_t> &data);
     void readRelTable(const ELF32Object *obj, const std::vector<uint8_t> &data);
 
